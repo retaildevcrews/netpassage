@@ -22,12 +22,26 @@ namespace NetPassage
         private static bool IsHttpRelayMode;
         private static string ConnectionStatus = "offline";
 
+        // Spike note:
+        // Used webvalidate for cancellation token example
+        // https://github.com/microsoft/webvalidate/blob/main/src/app/Program.cs
+
+        /// <summary>
+        /// Gets cancellation token
+        /// </summary>
+        public static CancellationTokenSource TokenSource { get; } = new CancellationTokenSource();
+
         static void Main(string[] args)
         {
             Console.CancelKeyPress += (sender, eventArgs) => {
                 // call methods to clean up
                 eventArgs.Cancel = true;
                 Program.KeepRunning = false;
+
+                // Spike note:
+                // Call cancel here in the control-c handler.
+                // Looks like the rest of the code is already configured to shutdown properly.
+                TokenSource.Cancel();
             };
 
             AppConfig = new ConfigurationBuilder()
@@ -45,11 +59,17 @@ namespace NetPassage
             LeftSectionFiller = string.Empty.PadRight(Logger.LeftPad, ' ');
             MidSectionFiller = string.Empty.PadRight(Logger.MidPad, ' ');
 
+            // Spike note:
+            // During spike, commented out this check and harcoded the name of the config file below
+
             if (args.Length < 1)
             {
                 ShowError("Missing configuration file");
                 Environment.Exit(0);
             }
+
+            // Spike note:
+            // Harcoded "Netpassage.json" here during the spike instead of using "args[0]".
 
             UserConfig = new ConfigurationBuilder()
                 .AddJsonFile(args[0], false, true)
@@ -84,7 +104,7 @@ namespace NetPassage
                             key,
                             TargetHttpRelay,
                             ConnectionEventHandler,
-                            new CancellationTokenSource());
+                            TokenSource);
 
                         // Opening the listener establishes the control channel to
                         // the Azure Relay service. The control channel is continuously

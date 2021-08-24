@@ -153,6 +153,20 @@ namespace Microsoft.HybridConnections.Core
             // Start a new thread that will continuously read the console.
             await Console.In.ReadLineAsync().ContinueWith((s) => { CTS.Cancel(); });
 
+            // Spike note:
+            // The line above is suppose to wait for user input before calling the method in "ContinueWith".
+            // This does not behave as expected when running in a container with no STDIN to wait for.
+            // It stops immediate and then CTS.Cancel() is called, stopping the app.
+            // The code is a quick workaround to block until Console.CancelKeyPress is called in the updated "NetPassage/Program.cs".
+
+            // while(true)
+            // {
+            //     if (CTS.Token.IsCancellationRequested)
+            //     {
+            //         break;
+            //     }
+            // }
+
             // Close the listener
             await _listener.CloseAsync();
         }
