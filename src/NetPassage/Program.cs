@@ -73,6 +73,7 @@ namespace NetPassage
 
             UserConfig = new ConfigurationBuilder()
                 .AddJsonFile(args[0], false, true)
+                .AddEnvironmentVariables()
                 .Build();
 
             IsHttpRelayMode = UserConfig["Relay:Mode"].Equals("http", StringComparison.CurrentCultureIgnoreCase);
