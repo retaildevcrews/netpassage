@@ -31,6 +31,12 @@ namespace NetPassage
         /// </summary>
         public static CancellationTokenSource TokenSource { get; } = new CancellationTokenSource();
 
+        // Spike note:
+        // second approach to get this working in environment when STDIN is not available.
+        // used to block the program until Console.CancelKeyPress method runs
+        // alternative to first spike approach of using infinite while loop to block in the httplistener listenasync method
+        private static ManualResetEvent manualResetEvent = new ManualResetEvent(false);
+
         static void Main(string[] args)
         {
             Console.CancelKeyPress += (sender, eventArgs) => {
@@ -42,6 +48,10 @@ namespace NetPassage
                 // Call cancel here in the control-c handler.
                 // Looks like the rest of the code is already configured to shutdown properly.
                 TokenSource.Cancel();
+
+                // Spike note:
+                // release all threads that are blocking on manualResetEvent
+                manualResetEvent.Set();
             };
 
             AppConfig = new ConfigurationBuilder()
@@ -146,7 +156,16 @@ namespace NetPassage
             await httpRelayListener.OpenAsync(ProcessHttpMessagesHandler);
 
             // Start a new thread that will continuously read the console.
-            await httpRelayListener.ListenAsync();
+            // await httpRelayListener.ListenAsync();
+
+            // Spike note:
+            // bypass ListenAsync on the Microsoft.HybridConnections.Core:HttpListener class.
+            // it originally waited on console input, then called the CloseAsync method on the internal HybridConnectionListener listener
+            // this setup does not work in cases where STDIN is not available. like running docker without "-it" flag or Azure Container Instance
+
+            // alternative is to block here using ManualResetEvent class.
+            // this will block until "manualResetEvent.Set()" is called in Console.CancelKeyPress.
+            manualResetEvent.WaitOne();
 
             // Close the connection
             await httpRelayListener.CloseAsync();
