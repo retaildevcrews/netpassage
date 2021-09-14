@@ -19,7 +19,6 @@ namespace NetPassage
         private static string MidSectionFiller;
         private static string ConnectionName;
         private static string TargetHttpRelay;
-        private static bool IsHttpRelayMode;
         private static string ConnectionStatus = "offline";
 
         static void Main(string[] args)
@@ -45,26 +44,19 @@ namespace NetPassage
             LeftSectionFiller = string.Empty.PadRight(Logger.LeftPad, ' ');
             MidSectionFiller = string.Empty.PadRight(Logger.MidPad, ' ');
 
-            if (args.Length < 1)
-            {
-                ShowError("Missing configuration file");
-                Environment.Exit(0);
-            }
-
             UserConfig = new ConfigurationBuilder()
-                .AddJsonFile(args[0], false, true)
+                .AddJsonFile("./NetPassage.json", false, true)
                 .Build();
 
-            IsHttpRelayMode = UserConfig["Relay:Mode"].Equals("http", StringComparison.CurrentCultureIgnoreCase);
+            // IsHttpRelayMode = true
+            // configHeader = "Http"
 
-            var configHeader = IsHttpRelayMode ? "Http" : "WebSocket";
+            var relayNamespace = $"{UserConfig["Namespace"]}.servicebus.windows.net";
+            var keyName = UserConfig["PolicyName"];
+            var key = UserConfig["PolicyKey"];
 
-            var relayNamespace = $"{UserConfig[$"{configHeader}:Namespace"]}.servicebus.windows.net";
-            var keyName = UserConfig[$"{configHeader}:PolicyName"];
-            var key = UserConfig[$"{configHeader}:PolicyKey"];
-
-            ConnectionName = UserConfig[$"{configHeader}:ConnectionName"];
-            TargetHttpRelay = UserConfig[$"{configHeader}:TargetServiceAddress"];
+            ConnectionName = UserConfig["ConnectionName"];
+            TargetHttpRelay = UserConfig["TargetServiceAddress"];
 
             try
             {
@@ -74,39 +66,20 @@ namespace NetPassage
                     // Do your work in here, in small chunks.
                     // If you literally just want to wait until ctrl-c,
                     // not doing anything, see the answer using set-reset events.
-                    if (IsHttpRelayMode)
-                    {
-                        // Create the Http hybrid proxy listener
-                        var httpRelayListener = new HttpListener(
-                            relayNamespace,
-                            ConnectionName,
-                            keyName,
-                            key,
-                            TargetHttpRelay,
-                            ConnectionEventHandler,
-                            new CancellationTokenSource());
+                    // Create the Http hybrid proxy listener
+                    var httpRelayListener = new HttpListener(
+                        relayNamespace,
+                        ConnectionName,
+                        keyName,
+                        key,
+                        TargetHttpRelay,
+                        ConnectionEventHandler,
+                        new CancellationTokenSource());
 
-                        // Opening the listener establishes the control channel to
-                        // the Azure Relay service. The control channel is continuously
-                        // maintained, and is reestablished when connectivity is disrupted.
-                        Program.KeepRunning = RunHttpRelayAsync(httpRelayListener).GetAwaiter().GetResult();
-                    }
-                    else // WebSockets Relay Mode
-                    {
-                        // Create the WebSockets hybrid proxy listener
-                        var webSocketListener = new WebSocketListener(
-                            relayNamespace,
-                            ConnectionName,
-                            keyName,
-                            key,
-                            ConnectionEventHandler,
-                            new CancellationTokenSource());
-
-                        // Opening the listener establishes the control channel to
-                        // the Azure Relay service. The control channel is continuously
-                        // maintained, and is reestablished when connectivity is disrupted.
-                        Program.KeepRunning = RunWebSocketRelayAsync(webSocketListener).GetAwaiter().GetResult();
-                    }
+                    // Opening the listener establishes the control channel to
+                    // the Azure Relay service. The control channel is continuously
+                    // maintained, and is reestablished when connectivity is disrupted.
+                    Program.KeepRunning = RunHttpRelayAsync(httpRelayListener).GetAwaiter().GetResult();
                 }
             }
             catch (Exception e)
@@ -306,8 +279,7 @@ namespace NetPassage
 
         static void ShowConfiguration(IConfiguration config)
         {
-            var relayNamespace = $"sb://{config["Relay:Namespace"]}.servicebus.windows.net";
-            var IsHttpRelayMode = config["Relay:Mode"].Equals("http", StringComparison.CurrentCultureIgnoreCase);
+            var relayNamespace = $"sb://{config["Namespace"]}.servicebus.windows.net";
 
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine($"{LeftSectionFiller}{MidSectionFiller}(Ctrl+C to quit)");
@@ -321,7 +293,7 @@ namespace NetPassage
             filler = string.Empty.PadRight(LeftSectionFiller.Length - title.Length > 0 ? LeftSectionFiller.Length - title.Length : 0);
             Console.WriteLine($"{title}{filler}{MidSectionFiller}{relayNamespace}");
 
-            title = IsHttpRelayMode? "Http Forwarding" : "Websocket Forwarding";
+            title = "Http Forwarding";
             filler = string.Empty.PadRight(LeftSectionFiller.Length - title.Length > 0 ? LeftSectionFiller.Length - title.Length : 0);
             Console.WriteLine($"{title}{filler}{MidSectionFiller}{relayNamespace}/{ConnectionName} {(char)29} {TargetHttpRelay}");
         }
@@ -333,7 +305,7 @@ namespace NetPassage
         {
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine("\n\r\n\r");
-            Console.WriteLine(IsHttpRelayMode ? "HTTP Requests" : "Websocket Requests");
+            Console.WriteLine("HTTP Requests");
             Console.WriteLine("___________________");
             Console.WriteLine("\n\r");
         }
