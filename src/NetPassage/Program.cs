@@ -7,6 +7,7 @@ using System.IO;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using static NetPassage.KeyVaultConfigExtensions;
 
 namespace NetPassage
 {
@@ -32,7 +33,6 @@ namespace NetPassage
             AppConfig = new ConfigurationBuilder()
                 .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
                 .AddJsonFile("appsettings.json", false, true)
-                .AddEnvironmentVariables()
                 .Build();
 
             ShowHeader(AppConfig);
@@ -45,11 +45,9 @@ namespace NetPassage
             MidSectionFiller = string.Empty.PadRight(Logger.MidPad, ' ');
 
             UserConfig = new ConfigurationBuilder()
-                .AddJsonFile("./NetPassage.json", false, true)
+                .AddEnvironmentVariables() // Get KeyVault Name
+                .AddAzureKeyVaultConfiguration("KEYVAULT_NAME")
                 .Build();
-
-            // IsHttpRelayMode = true
-            // configHeader = "Http"
 
             var relayNamespace = $"{UserConfig["Namespace"]}.servicebus.windows.net";
             var keyName = UserConfig["PolicyName"];
@@ -280,6 +278,7 @@ namespace NetPassage
         static void ShowConfiguration(IConfiguration config)
         {
             var relayNamespace = $"sb://{config["Namespace"]}.servicebus.windows.net";
+            var keyVaultName = config["KEYVAULT_NAME"];
 
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine($"{LeftSectionFiller}{MidSectionFiller}(Ctrl+C to quit)");
@@ -287,6 +286,11 @@ namespace NetPassage
             var title = "Session Status";
             var filler = string.Empty.PadRight(LeftSectionFiller.Length - title.Length > 0 ? LeftSectionFiller.Length - title.Length : 0);
             Console.WriteLine($"{title}{filler}{MidSectionFiller}{ConnectionStatus}");
+
+            Console.ForegroundColor = ConsoleColor.White;
+            title = "KeyVault Name";
+            filler = string.Empty.PadRight(LeftSectionFiller.Length - title.Length > 0 ? LeftSectionFiller.Length - title.Length : 0);
+            Console.WriteLine($"{title}{filler}{MidSectionFiller}{keyVaultName}");
 
             Console.ForegroundColor = ConsoleColor.White;
             title = "Azure Relay Namespace";
