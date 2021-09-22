@@ -1,0 +1,33 @@
+name: Build NetPassage
+
+on:
+  push:
+    branches:
+      - aakindele/acr-test
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-20.04
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Build and tag Docker image
+      run: docker build . -t ${{ secrets.ACR_NAME }}.azurecr.io/netpassage:latest
+
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: ACR Login
+      uses: azure/CLI@v1
+      with:
+        inlineScript: |
+          az acr login --name ${{ secrets.ACR_NAME }}
+
+
+    - name: Push Docker image
+      run: docker push ${{ secrets.ACR_NAME }}.azurecr.io/netpassage:latest
