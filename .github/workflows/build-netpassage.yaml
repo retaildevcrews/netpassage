@@ -7,7 +7,7 @@ on:
 
 jobs:
 
-  build:
+  build-docker-image:
 
     runs-on: ubuntu-20.04
 
@@ -22,12 +22,7 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: ACR Login
-      uses: azure/CLI@v1
-      with:
-        inlineScript: |
-          az acr login --name ${{ secrets.ACR_NAME }}
-
-
     - name: Push Docker image
-      run: docker push ${{ secrets.ACR_NAME }}.azurecr.io/netpassage:latest
+      run: |
+        az acr login --name ${{ secrets.ACR_NAME }}
+        docker push ${{ secrets.ACR_NAME }}.azurecr.io/netpassage:latest
